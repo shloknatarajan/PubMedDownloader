@@ -13,3 +13,6 @@ Go from a PMID to the full article text
 | ---- | ----- | ----- | ----- |
 | 12895196 | PMC1884285 | https://pmc.ncbi.nlm.nih.gov/articles/PMC1884285/ | Intervention study|
 | 17872605 | PMC1952551 | https://pmc.ncbi.nlm.nih.gov/articles/PMC1952551/ | Case study |
+
+## Notes
+Make sure to have a .env with your NCBI_EMAIL=your-email@school.edu

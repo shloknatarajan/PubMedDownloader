@@ -2,3 +2,14 @@
 # pixi environments
 .pixi
 *.egg-info
+
+# environment files
+.env
+
+# python cache
+**/*__pycache__
+**/*.pyc
+**/.DS_Store
+
+# data
+data/*

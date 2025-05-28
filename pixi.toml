@@ -8,3 +8,7 @@ version = "0.1.0"
 [tasks]
 
 [dependencies]
+python-dotenv = ">=1.1.0,<2"
+requests = ">=2.32.3,<3"
+loguru = ">=0.7.3,<0.8"
+ipykernel = ">=6.29.5,<7"
