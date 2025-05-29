@@ -18,7 +18,9 @@ def save_file(file_path: str, content: str):
         f.write(content)
 
 
-def get_markdown_from_pmid(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
+def get_markdown_from_pmid(
+    pmid: str, save_dir: Optional[str] = "data"
+) -> Optional[str]:
     """
     Get the article from the PMID
     High level conversion steps

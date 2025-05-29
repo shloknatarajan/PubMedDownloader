@@ -1,11 +1,10 @@
-# Goal
-Go from a PMID to the full article text 
+# Convert Pubmed Article (PMID) to Markdown
+Go from a PMID to the full article text in markdown format as long as the article has a valid PMCID
 
 ## Usage
 ```
-python -m src.pipeline.get_article --pmid <PIMD> --save_dir <data>
+python -m src.markdown_from_pmid --pmid <PIMD> --save_dir <data>
 ```
-
 
 ## Examples for testing
 | PMID | PMCID | Link |  Notes |
