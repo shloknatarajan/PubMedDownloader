@@ -31,7 +31,9 @@ def batch_pmid_to_pmcid(
     results = {}
 
     if email is None or email == "":
-        logger.warning("No email provided. Please set the NCBI_EMAIL environment variable.")
+        logger.warning(
+            "No email provided. Please set the NCBI_EMAIL environment variable."
+        )
 
     if isinstance(pmids, str):
         pmids = [pmids]

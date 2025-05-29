@@ -4,6 +4,7 @@
 3. Raw HTML
 4. Parsed XML
 """
+
 from typing import List, Optional
 from loguru import logger
 import pandas as pd
@@ -11,6 +12,8 @@ import os
 from src.convert import batch_pmid_to_pmcid, html_to_markdown, save_markdown
 from src.pmcid_to_text.fetch_article import get_html_from_pmcid, save_html
 import argparse
+import tqdm
+
 
 def save_file(file_path: str, content: str):
     """
@@ -20,6 +23,7 @@ def save_file(file_path: str, content: str):
     with open(file_path, "w") as f:
         f.write(content)
 
+
 def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
     """
     Get the article from the PMID
@@ -27,7 +31,7 @@ def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[st
     2. Get HTML content
     3. Convert HTML to Markdown
     4. Return the Markdown content
-        
+
     Args:
         pmid (str): The PMID to fetch
         save_dir (str): The directory to save the files to (default: "data")
@@ -37,23 +41,27 @@ def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[st
     # Convert PMID to PMCID
     pmcid_mapping = batch_pmid_to_pmcid(pmid)
     pmcid = pmcid_mapping.get(pmid)
-    
+
     if pmcid is None:
-        logger.error(f"No PMCID found for PMID {pmid}")
+        logger.warning(f"No PMCID found for PMID {pmid}. Skipping...")
         return None
-    
+
     logger.info(f"PMCID found for PMID {pmid}: {pmcid}")
-    
+
     # Get HTML content
     raw_html = get_html_from_pmcid(pmcid)
     if raw_html is None:
         logger.error(f"No HTML found for PMCID {pmcid}")
         return None
-    
+
     logger.info(f"HTML found for PMCID {pmcid}")
 
     # Convert HTML to Markdown
     markdown = html_to_markdown(raw_html)
+
+    if markdown is None:
+        logger.error(f"No Markdown found for PMCID {pmcid}")
+        return None
 
     if save_dir is not None:
         # Save raw html to data/raw_html
@@ -65,8 +73,25 @@ def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[st
     return markdown
 
 
+def save_batch_pmid_to_markdown(
+    pmids: List[str], save_dir: Optional[str] = "data"
+) -> List[str]:
+    """
+    Get the article from the PMID
+    """
+    skipped_pmids = []
+    for pmid in tqdm.tqdm(pmids):
+        markdown = pmid_to_markdown(pmid, save_dir)
+        if markdown is None:
+            skipped_pmids.append(pmid)
+
+    return skipped_pmids
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch and save article text from PMID")
+    parser = argparse.ArgumentParser(
+        description="Fetch and save article text from PMID"
+    )
     parser.add_argument("--pmid", type=str, help="PMID of the article to fetch")
     args = parser.parse_args()
 
