@@ -1,10 +1,3 @@
-"""
-1. PMID
-2. PMCID
-3. Raw HTML
-4. Parsed XML
-"""
-
 from typing import List, Optional
 from loguru import logger
 import pandas as pd
@@ -28,10 +21,11 @@ def save_file(file_path: str, content: str):
 def get_markdown_from_pmid(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
     """
     Get the article from the PMID
-    1. Convert PMID to PMCID
-    2. Get HTML content
-    3. Convert HTML to Markdown
-    4. Return the Markdown content
+    High level conversion steps
+    1. PMID --> PMCID
+    2. PMCID --> Raw HTML
+    3. Raw HTML --> Parsed Markdown
+    4. Save markdown and raw HTML
 
     Args:
         pmid (str): The PMID to fetch
