@@ -9,8 +9,9 @@ from typing import List, Optional
 from loguru import logger
 import pandas as pd
 import os
-from src.convert import batch_pmid_to_pmcid, html_to_markdown, save_markdown
-from src.pmcid_to_text.fetch_article import get_html_from_pmcid, save_html
+from src.pmcid_from_pmid import batch_pmcid_from_pmid
+from src.html_from_pmcid import get_html_from_pmcid
+from src.markdown_from_html import html_to_markdown
 import argparse
 import tqdm
 
@@ -24,7 +25,7 @@ def save_file(file_path: str, content: str):
         f.write(content)
 
 
-def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
+def get_markdown_from_pmid(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
     """
     Get the article from the PMID
     1. Convert PMID to PMCID
@@ -39,7 +40,7 @@ def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[st
         Optional[str]: The Markdown content if successful, None if any step fails
     """
     # Convert PMID to PMCID
-    pmcid_mapping = batch_pmid_to_pmcid(pmid)
+    pmcid_mapping = batch_pmcid_from_pmid(pmid)
     pmcid = pmcid_mapping.get(pmid)
 
     if pmcid is None:
@@ -73,7 +74,7 @@ def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[st
     return markdown
 
 
-def save_batch_pmid_to_markdown(
+def save_batch_markdown_from_pmid(
     pmids: List[str], save_dir: Optional[str] = "data"
 ) -> List[str]:
     """
@@ -81,7 +82,7 @@ def save_batch_pmid_to_markdown(
     """
     skipped_pmids = []
     for pmid in tqdm.tqdm(pmids):
-        markdown = pmid_to_markdown(pmid, save_dir)
+        markdown = get_markdown_from_pmid(pmid, save_dir)
         if markdown is None:
             skipped_pmids.append(pmid)
 
@@ -93,10 +94,11 @@ if __name__ == "__main__":
         description="Fetch and save article text from PMID"
     )
     parser.add_argument("--pmid", type=str, help="PMID of the article to fetch")
+    parser.add_argument("--save_dir", type=str, help="Directory to save the article to")
     args = parser.parse_args()
 
     if not args.pmid:
         parser.error("--pmid is required")
 
-    markdown = pmid_to_markdown(args.pmid)
+    markdown = get_markdown_from_pmid(args.pmid, args.save_dir)
     print(markdown)

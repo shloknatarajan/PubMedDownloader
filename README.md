@@ -1,11 +1,10 @@
 # Goal
 Go from a PMID to the full article text 
 
-## Options
-- Test if the PMCID works to get the full text as expected (this would be fully supported / legal) using official APIs
-- Some sort of GET request system with link https://pmc.ncbi.nlm.nih.gov/articles/{PMCID}/
-- Find some pre-built package
-- Look into Aaron's playwright method
+## Usage
+```
+python -m src.pipeline.get_article --pmid <PIMD> --save_dir <data>
+```
 
 
 ## Examples for testing

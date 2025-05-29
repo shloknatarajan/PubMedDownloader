@@ -2,14 +2,13 @@ import requests
 from typing import List, Dict, Optional
 import os
 import time
-import json
 from dotenv import load_dotenv
 from loguru import logger
 
 load_dotenv()
 
 
-def batch_pmid_to_pmcid(
+def batch_pmcid_from_pmid(
     pmids: List[str] | str,
     email: str = os.getenv("NCBI_EMAIL"),
     batch_size: int = 100,
