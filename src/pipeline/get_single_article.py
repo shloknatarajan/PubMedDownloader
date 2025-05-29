@@ -20,7 +20,7 @@ def save_file(file_path: str, content: str):
     with open(file_path, "w") as f:
         f.write(content)
 
-def get_article(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
+def pmid_to_markdown(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
     """
     Get the article from the PMID
     1. Convert PMID to PMCID
@@ -73,5 +73,5 @@ if __name__ == "__main__":
     if not args.pmid:
         parser.error("--pmid is required")
 
-    html = get_article(args.pmid)
-    print(html)
+    markdown = pmid_to_markdown(args.pmid)
+    print(markdown)
