@@ -14,15 +14,12 @@ from bs4 import BeautifulSoup
 import re
 import os
 
-def html_to_markdown(path: str) -> str:
+def html_to_markdown(raw_html: str) -> str:
     """
     Parse the HTML file for the pubmed article (example, data/raw_html/PMC1884285.html) and return markdown formatted text
     Contain links to any images in the article. Ignore links to external sites, just include the paper text.
     """
-    with open(path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    soup = BeautifulSoup(content, 'html.parser')
+    soup = BeautifulSoup(raw_html, 'html.parser')
     
     # Extract metadata
     pmcid = extract_pmcid(soup)

@@ -12,19 +12,27 @@ from src.convert import batch_pmid_to_pmcid, html_to_markdown, save_markdown
 from src.pmcid_to_text.fetch_article import get_html_from_pmcid, save_html
 import argparse
 
-def get_article(pmid: str) -> Optional[str]:
+def save_file(file_path: str, content: str):
+    """
+    Save the content to the file_path
+    """
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "w") as f:
+        f.write(content)
+
+def get_article(pmid: str, save_dir: Optional[str] = "data") -> Optional[str]:
     """
     Get the article from the PMID
     1. Convert PMID to PMCID
     2. Get HTML content
     3. Convert HTML to Markdown
-    4. Return the PMID, PMCID, HTML, and Markdown save path
-    
+    4. Return the Markdown content
+        
     Args:
         pmid (str): The PMID to fetch
-        
+        save_dir (str): The directory to save the files to (default: "data")
     Returns:
-        Optional[str]: The PMID, PMCID, and HTML save path if successful, None if any step fails
+        Optional[str]: The Markdown content if successful, None if any step fails
     """
     # Convert PMID to PMCID
     pmcid_mapping = batch_pmid_to_pmcid(pmid)
@@ -44,13 +52,17 @@ def get_article(pmid: str) -> Optional[str]:
     
     logger.info(f"HTML found for PMCID {pmcid}")
 
-    # Save the HTML content
-    save_html(pmcid, raw_html, "data/raw_html")
-
     # Convert HTML to Markdown
-    markdown = html_to_markdown(f"data/raw_html/{pmcid}.html")
-    save_markdown(pmcid, markdown, "data/articles")
-    return pmid, pmcid, f"data/raw_html/{pmcid}.html", f"data/articles/{pmcid}.md"
+    markdown = html_to_markdown(raw_html)
+
+    if save_dir is not None:
+        # Save raw html to data/raw_html
+        save_file(f"{save_dir}/raw_html/{pmcid}.html", raw_html)
+
+        # Save markdown to data/articles
+        save_file(f"{save_dir}/articles/{pmcid}.md", markdown)
+
+    return markdown
 
 
 if __name__ == "__main__":
