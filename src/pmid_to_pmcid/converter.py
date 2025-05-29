@@ -10,7 +10,7 @@ load_dotenv()
 
 
 def batch_pmid_to_pmcid(
-    pmids: List[str],
+    pmids: List[str] | str,
     email: str = os.getenv("NCBI_EMAIL"),
     batch_size: int = 100,
     delay: float = 0.4,
@@ -32,6 +32,11 @@ def batch_pmid_to_pmcid(
 
     if email is None or email == "":
         logger.warning("No email provided. Please set the NCBI_EMAIL environment variable.")
+
+    if isinstance(pmids, str):
+        pmids = [pmids]
+    else:
+        pmids = [str(pmid) for pmid in pmids]
 
     # Process remaining PMIDs
     for i in range(0, len(pmids), batch_size):

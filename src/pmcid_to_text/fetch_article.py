@@ -10,7 +10,7 @@ import time
 from typing import List, Optional
 import tqdm
 
-def get_article_from_pmcid(pmcid: str) -> Optional[str]:
+def get_html_from_pmcid(pmcid: str) -> Optional[str]:
     """
     Given a PMCID, fetch the full article text from the NCBI website.
     Returns the HTML text of the article in string format from the url
@@ -20,7 +20,7 @@ def get_article_from_pmcid(pmcid: str) -> Optional[str]:
         pmcid (str): The PMCID to fetch
         
     Returns:
-        Optional[str]: The article text if successful, None if there was an error
+        Optional[str]: The article html text if successful, None if there was an error
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -47,7 +47,7 @@ def get_article_from_pmcid(pmcid: str) -> Optional[str]:
         logger.error(f"An error occurred while fetching PMCID {pmcid}: {str(e)}")
         return None
 
-def save_article(pmcid: str, text: str, save_path: str = "data/articles") -> None:
+def save_html(pmcid: str, text: str, save_path: str = "data/raw_html") -> None:
     """
     Save the HTML text of the article to a file
     
@@ -61,7 +61,7 @@ def save_article(pmcid: str, text: str, save_path: str = "data/articles") -> Non
         f.write(text)
     logger.info(f"Article saved to {save_path}/{pmcid}.html")
 
-def save_batch_articles_from_pmcids(pmcids: List[str], save_path: str = "data/articles", delay: float = 0.4) -> None:
+def save_batch_html_from_pmcids(pmcids: List[str], save_path: str = "data/raw_html", delay: float = 0.4) -> None:
     """
     Get the article text from the NCBI website for a batch of PMCIDs
     
@@ -71,9 +71,9 @@ def save_batch_articles_from_pmcids(pmcids: List[str], save_path: str = "data/ar
         delay (float): Delay between requests in seconds
     """
     for pmcid in tqdm.tqdm(pmcids):
-        text = get_article_from_pmcid(pmcid)
+        text = get_html_from_pmcid(pmcid)
         if text is not None:
-            save_article(pmcid, text, save_path)
+            save_html(pmcid, text, save_path)
         time.sleep(delay)
     logger.info(f"All articles saved to {save_path}")
 
@@ -87,9 +87,9 @@ def main():
     if not args.pmcid:
         parser.error("--pmcid is required")
 
-    text = get_article_from_pmcid(args.pmcid)
+    text = get_html_from_pmcid(args.pmcid)
     if text is not None:
-        save_article(args.pmcid, text, args.save_path)
+        save_html(args.pmcid, text, args.save_path)
 
 if __name__ == "__main__":
     main()
