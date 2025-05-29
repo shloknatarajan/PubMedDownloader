@@ -28,6 +28,15 @@
             "cwd": "${workspaceFolder}",
             "module": "src.pmcid_to_text.html_getter",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Single Article",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "module": "src.pipeline.get_single_article",
+            "args": ["--pmid", "12895196"],
+            "console": "integratedTerminal"
         }
     ]
 }

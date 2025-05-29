@@ -8,7 +8,7 @@ from typing import List, Optional
 from loguru import logger
 import pandas as pd
 import os
-from src.pmid_to_pmcid.converter import batch_pmid_to_pmcid
+from src.convert import batch_pmid_to_pmcid, html_to_markdown, save_markdown
 from src.pmcid_to_text.fetch_article import get_html_from_pmcid, save_html
 import argparse
 
@@ -17,7 +17,8 @@ def get_article(pmid: str) -> Optional[str]:
     Get the article from the PMID
     1. Convert PMID to PMCID
     2. Get HTML content
-    3. Return the PMID, PMCID, and HTML save path
+    3. Convert HTML to Markdown
+    4. Return the PMID, PMCID, HTML, and Markdown save path
     
     Args:
         pmid (str): The PMID to fetch
@@ -36,17 +37,20 @@ def get_article(pmid: str) -> Optional[str]:
     logger.info(f"PMCID found for PMID {pmid}: {pmcid}")
     
     # Get HTML content
-    html = get_html_from_pmcid(pmcid)
-    if html is None:
+    raw_html = get_html_from_pmcid(pmcid)
+    if raw_html is None:
         logger.error(f"No HTML found for PMCID {pmcid}")
         return None
     
     logger.info(f"HTML found for PMCID {pmcid}")
 
     # Save the HTML content
-    html_save_path = "data/raw_html"
-    save_html(pmcid, html, html_save_path)
-    return pmid, pmcid, html_save_path
+    save_html(pmcid, raw_html, "data/raw_html")
+
+    # Convert HTML to Markdown
+    markdown = html_to_markdown(f"data/raw_html/{pmcid}.html")
+    save_markdown(pmcid, markdown, "data/articles")
+    return pmid, pmcid, f"data/raw_html/{pmcid}.html", f"data/articles/{pmcid}.md"
 
 
 if __name__ == "__main__":
