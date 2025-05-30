@@ -4,10 +4,11 @@ import pandas as pd
 import os
 from .pmcid_from_pmid import batch_pmcid_from_pmid
 from .html_from_pmcid import get_html_from_pmcid
-from .markdown_from_html import html_to_markdown
+from .markdown_from_html import PubMedHTMLToMarkdownConverter
 import argparse
 import tqdm
-
+import time
+from .manage_records import get_scraped_pmids
 
 def save_file(file_path: str, content: str):
     """
@@ -54,7 +55,8 @@ def get_markdown_from_pmid(
     logger.info(f"HTML found for PMCID {pmcid}")
 
     # Convert HTML to Markdown
-    markdown = html_to_markdown(raw_html)
+    converter = PubMedHTMLToMarkdownConverter()
+    markdown = converter.convert_html(raw_html)
 
     if markdown is None:
         logger.error(f"No Markdown found for PMCID {pmcid}")
@@ -70,18 +72,43 @@ def get_markdown_from_pmid(
     return markdown
 
 
-def save_batch_markdown_from_pmid(
-    pmids: List[str], save_dir: Optional[str] = "data"
+def save_batch_markdown_from_pmids(
+    pmids: List[str], save_dir: Optional[str] = "data", delay: float = 0.4
 ) -> List[str]:
     """
-    Get the article from the PMID
+    Process a batch of PMIDs to get their markdown content.
+    
+    Args:
+        pmids (List[str]): List of PMIDs to process
+        save_dir (Optional[str]): Directory to save the articles to (default: "data")
+        delay (float): Delay between requests in seconds (default: 0.4)
+        
+    Returns:
+        List[str]: List of PMIDs that were skipped due to errors
     """
+    # Get the list of PMIDs that have already been scraped
+    scraped_pmids = set(get_scraped_pmids(update=False))
     skipped_pmids = []
-    for pmid in tqdm.tqdm(pmids):
-        markdown = get_markdown_from_pmid(pmid, save_dir)
-        if markdown is None:
+    for pmid in tqdm.tqdm(pmids, desc="Processing PMIDs"):
+        if pmid in scraped_pmids:
+            logger.warning(f"Skipping PMID {pmid}, found in record_map")
             skipped_pmids.append(pmid)
+            continue
+        try:
+            markdown = get_markdown_from_pmid(pmid, save_dir)
+            if markdown is None:
+                logger.warning(f"Failed to process PMID {pmid}")
+                skipped_pmids.append(pmid)
+            time.sleep(delay)  # Add delay between requests
+        except Exception as e:
+            logger.error(f"Error processing PMID {pmid}: {str(e)}")
+            skipped_pmids.append(pmid)
+            time.sleep(delay)  # Still add delay even after errors
 
+    if skipped_pmids:
+        logger.warning(f"Skipped {len(skipped_pmids)} PMIDs")
+    logger.info("Finished processing PMIDs")
+        
     return skipped_pmids
 
 

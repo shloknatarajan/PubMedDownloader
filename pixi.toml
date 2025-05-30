@@ -6,6 +6,8 @@ platforms = ["osx-arm64"]
 version = "0.1.0"
 
 [tasks]
+update-records = "python -m src.manage_records"
+convert-local-html = "python -m src.markdown_from_html"
 
 [dependencies]
 python-dotenv = ">=1.1.0,<2"
