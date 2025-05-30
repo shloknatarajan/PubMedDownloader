@@ -9,14 +9,11 @@ in pubmed_html_to_markdown_conversion_process.md
 
 import re
 import html
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 import os
-from urllib.parse import urljoin, urlparse
-import tqdm
 from bs4 import BeautifulSoup, Tag, NavigableString
 from loguru import logger
-
+import tqdm
 class PubMedHTMLToMarkdownConverter:
     """Converts PubMed/PMC HTML articles to markdown format."""
     
@@ -160,18 +157,23 @@ class PubMedHTMLToMarkdownConverter:
         
         # PMID
         if 'pmid' in metadata:
-            pmid_url = f"https://pubmed.ncbi.nlm.nih.gov/{metadata['pmid']}/"
-            lines.append(f"**PMID:** [{metadata['pmid']}]({pmid_url})")
+            lines.append(f"**PMID:** {metadata['pmid']}")
         
         # PMCID
         if 'pmcid' in metadata:
-            pmcid_url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{metadata['pmcid']}/"
-            lines.append(f"**PMCID:** [{metadata['pmcid']}]({pmcid_url})")
-        
+            lines.append(f"**PMCID:** {metadata['pmcid']}")
+
+        # URL
+        if 'pmcid' in metadata:
+            url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{metadata['pmcid']}/"
+            lines.append(f"**URL:** {url}")
+
         # PDF
         if 'pdf_url' in metadata:
             lines.append(f"**PDF:** [{metadata['pdf_url']}]({metadata['pdf_url']})")
         
+
+
         return "\n".join(lines)
     
     def _is_scanned_document(self) -> bool:
@@ -590,13 +592,13 @@ def main():
 def run_local():
     converter = PubMedHTMLToMarkdownConverter()
     input_files = os.listdir("data/raw_html")
-    for file in tqdm.tqdm(input_files):
+    for file in tqdm.tqdm(input_files, desc="Converting HTML to Markdown"):
         converter = PubMedHTMLToMarkdownConverter()
         markdown_content = converter.convert_file(f"data/raw_html/{file}")
         os.makedirs("data/markdown", exist_ok=True)
         with open(f"data/markdown/{file.replace('.html', '.md')}", 'w', encoding='utf-8') as f:
             f.write(markdown_content)
-    logger.info(f"Converted {len(input_files)} files")
+    logger.info(f"Converted {len(input_files)} HTML files to Markdown")
 
 if __name__ == "__main__":
     run_local()

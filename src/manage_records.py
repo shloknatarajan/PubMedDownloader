@@ -1,6 +1,6 @@
 """
 Goal: Keep a record of the PMIDs that have been converted to pmcid, html, and markdown
-Store the record in a json file (data/record_map.json)
+Store the record in a json file (data/records.json)
 """
 
 import os
@@ -11,19 +11,35 @@ import pandas as pd
 
 def get_scraped_pmids(update: bool = False) -> List[str]:
     """
-    Get a list of all the PMIDs in the record_map.csv file
+    Get a list of all the PMIDs in the records.csv file
     
     Args:
-        update (bool): If True, create a new record_map.csv file
+        update (bool): If True, create a new records.csv file
     Returns:
-        List[str]: A list of all the PMIDs in the record_map.csv file
+        List[str]: A list of all the PMIDs in the records.csv file
     """
     if update:
-        record_map = create_record_map()
+        records = create_records()
     else:
-        record_map = pd.read_csv(os.path.join("data", "record_map.csv"))
-    pmid_list = record_map['PMID'].tolist()
+        records = pd.read_csv(os.path.join("data", "records.csv"))
+    pmid_list = records['PMID'].tolist()
     return pmid_list
+
+def get_scraped_pmcids(update: bool = False) -> List[str]:
+    """
+    Get a list of all the PMCIDs in the records.csv file
+    
+    Args:
+        update (bool): If True, create a new records.csv file
+    Returns:
+        List[str]: A list of all the PMIDs in the records.csv file
+    """
+    if update:
+        records = create_records()
+    else:
+        records = pd.read_csv(os.path.join("data", "records.csv"))
+    pmcid_list = records['PMCID'].tolist()
+    return pmcid_list
 
 def parse_markdown_metadata(markdown_text: str)-> dict:
     """
@@ -60,19 +76,19 @@ def parse_markdown_metadata(markdown_text: str)-> dict:
     
     return metadata
     
-def validate_record_map(record_map: pd.DataFrame) -> pd.DataFrame:
+def validate_records(records: pd.DataFrame) -> pd.DataFrame:
     """
-    Check if any of the records in the record_map are missing required fields.
+    Check if any of the records in the records are missing required fields.
     
     Args:
-        record_map (pd.DataFrame): DataFrame containing the record map
+        records (pd.DataFrame): DataFrame containing the record map
         
     Returns:
         pd.DataFrame: DataFrame containing only the records with missing fields
     """
     # Check for missing values in required columns
-    missing_mask = record_map[['PMID', 'PMCID', 'URL']].isna().any(axis=1)
-    missing_records = record_map[missing_mask]
+    missing_mask = records[['PMID', 'PMCID', 'URL']].isna().any(axis=1)
+    missing_records = records[missing_mask]
     
     if not missing_records.empty:
         logger.warning(f"Found {len(missing_records)} records with missing fields")
@@ -82,7 +98,7 @@ def validate_record_map(record_map: pd.DataFrame) -> pd.DataFrame:
     
     return missing_records
 
-def create_record_map() -> pd.DataFrame:
+def create_records() -> pd.DataFrame:
     """
     Get a list of all the markdown files in the data/articles directory
     Extract PMID, PMCID, and URL to create a csv table:
@@ -112,20 +128,20 @@ def create_record_map() -> pd.DataFrame:
             records.append(row)
 
     # Create DataFrame from list of records
-    record_map = pd.DataFrame(records)
+    records = pd.DataFrame(records)
 
-    missing_records = validate_record_map(record_map)
+    missing_records = validate_records(records)
     if len(missing_records) > 0:
         logger.warning(f"Missing records: {missing_records}")
     logger.info("Finished processing records")
 
     # Save record map to a CSV
-    record_map_path = os.path.join("data", "record_map.csv")
-    record_map.to_csv(record_map_path, index=False)
+    records_path = os.path.join("data", "records.csv")
+    records.to_csv(records_path, index=False)
     
-    logger.info(f"Record map saved to {record_map_path}")
-    return record_map
+    logger.info(f"Record map saved to {records_path}")
+    return records
 
 if __name__ == "__main__":
-    create_record_map()
+    create_records()
 
