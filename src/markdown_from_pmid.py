@@ -1,14 +1,14 @@
-from typing import List, Optional
+from typing import List, Optional, Union, Dict
 from loguru import logger
 import pandas as pd
 import os
-from .pmcid_from_pmid import batch_pmcid_from_pmid
+from .pmcid_from_pmid import get_pmcid_from_pmid
 from .html_from_pmcid import get_html_from_pmcid
 from .markdown_from_html import PubMedHTMLToMarkdownConverter
 import argparse
 import tqdm
 import time
-from .manage_records import get_scraped_pmids
+from .manage_records import get_scraped_pmcids
 
 def save_file(file_path: str, content: str):
     """
@@ -18,34 +18,24 @@ def save_file(file_path: str, content: str):
     with open(file_path, "w") as f:
         f.write(content)
 
-
-def get_markdown_from_pmid(
-    pmid: str, save_dir: Optional[str] = "data"
-) -> Optional[str]:
+def get_markdown_from_pmcid(pmcid: str) -> Optional[str]:
     """
-    Get the article from the PMID
-    High level conversion steps
-    1. PMID --> PMCID
-    2. PMCID --> Raw HTML
-    3. Raw HTML --> Parsed Markdown
-    4. Save markdown and raw HTML
+    Convert a single PMCID to Markdown
+    """
+    converter = PubMedHTMLToMarkdownConverter()
+    return converter.convert_html(pmcid)
 
+def process_single_pmcid(pmcid: str, save_dir: Optional[str] = "data") -> Optional[str]:
+    """
+    Process a single PMCID to get its markdown content.
+    
     Args:
-        pmid (str): The PMID to fetch
-        save_dir (str): The directory to save the files to (default: "data")
+        pmcid (str): The PMCID to process
+        save_dir (Optional[str]): Directory to save the files to (default: "data")
+        
     Returns:
-        Optional[str]: The Markdown content if successful, None if any step fails
+        Optional[str]: The markdown content if successful, None if any step fails
     """
-    # Convert PMID to PMCID
-    pmcid_mapping = batch_pmcid_from_pmid(pmid)
-    pmcid = pmcid_mapping.get(pmid)
-
-    if pmcid is None:
-        logger.warning(f"No PMCID found for PMID {pmid}. Skipping...")
-        return None
-
-    logger.info(f"PMCID found for PMID {pmid}: {pmcid}")
-
     # Get HTML content
     raw_html = get_html_from_pmcid(pmcid)
     if raw_html is None:
@@ -65,51 +55,77 @@ def get_markdown_from_pmid(
     if save_dir is not None:
         # Save raw html to data/raw_html
         save_file(f"{save_dir}/raw_html/{pmcid}.html", raw_html)
-
         # Save markdown to data/articles
         save_file(f"{save_dir}/articles/{pmcid}.md", markdown)
 
     return markdown
 
 
-def save_batch_markdown_from_pmids(
-    pmids: List[str], save_dir: Optional[str] = "data", delay: float = 0.4
-) -> List[str]:
+def get_markdown_from_pmid(
+    pmids: Union[str, List[str]], 
+    save_dir: Optional[str] = "data",
+    delay: float = 0.4
+) -> Union[Optional[str], Dict[str, Optional[str]]]:
     """
-    Process a batch of PMIDs to get their markdown content.
-    
-    Args:
-        pmids (List[str]): List of PMIDs to process
-        save_dir (Optional[str]): Directory to save the articles to (default: "data")
-        delay (float): Delay between requests in seconds (default: 0.4)
-        
-    Returns:
-        List[str]: List of PMIDs that were skipped due to errors
-    """
-    # Get the list of PMIDs that have already been scraped
-    scraped_pmids = set(get_scraped_pmids(update=False))
-    skipped_pmids = []
-    for pmid in tqdm.tqdm(pmids, desc="Processing PMIDs"):
-        if pmid in scraped_pmids:
-            logger.warning(f"Skipping PMID {pmid}, found in record_map")
-            skipped_pmids.append(pmid)
-            continue
-        try:
-            markdown = get_markdown_from_pmid(pmid, save_dir)
-            if markdown is None:
-                logger.warning(f"Failed to process PMID {pmid}")
-                skipped_pmids.append(pmid)
-            time.sleep(delay)  # Add delay between requests
-        except Exception as e:
-            logger.error(f"Error processing PMID {pmid}: {str(e)}")
-            skipped_pmids.append(pmid)
-            time.sleep(delay)  # Still add delay even after errors
+    Get the article(s) from the PMID(s)
+    High level conversion steps
+    1. PMID --> PMCID
+    2. PMCID --> Raw HTML
+    3. Raw HTML --> Parsed Markdown
+    4. Save markdown and raw HTML
 
-    if skipped_pmids:
-        logger.warning(f"Skipped {len(skipped_pmids)} PMIDs")
-    logger.info("Finished processing PMIDs")
+    Args:
+        pmid (Union[str, List[str]]): A single PMID string or a list of PMIDs to fetch
+        save_dir (str): The directory to save the files to (default: "data")
+        delay (float): Delay between requests in seconds (default: 0.4)
+    Returns:
+        Union[Optional[str], Dict[str, Optional[str]]]: 
+            - If input is a single PMID: Returns the Markdown content if successful, None if any step fails
+            - If input is a list of PMIDs: Returns a dictionary mapping PMIDs to their Markdown contents
+    """
+    total_pmids = len(pmids)
+    logger.info(f"Starting processing of {total_pmids} PMIDs")
+
+    # Convert PMIDs to PMCIDs
+    pmcid_mapping = get_pmcid_from_pmid(pmids)
+    pmcids = [pmcid_mapping.get(pmid) for pmid in pmids]
+
+    # Handle multiple PMIDs sequentially
+    results: Dict[str, Optional[str]] = {}
+    successful = 0
+    failed = 0
+    skipped = 0
+    scraped_pmcids = set(get_scraped_pmcids(update=False))
+
+    # Convert PMCIDS to HTML
+    html_mapping = get_html_from_pmcid(pmcids)
+    for i, pmcid in tqdm.tqdm(enumerate(pmcids, 1)):
+        if pmcid is None:
+            logger.warning(f"No PMCID found for PMID {pmids[i]}")
+            continue
+        if pmcid in scraped_pmcids:
+            skipped += 1
+            logger.warning(f"Skipping PMCID {pmcid}, found in record_map")
+            continue
+        result = process_single_pmcid(pmcid, save_dir)
+        results[pmcid] = result
         
-    return skipped_pmids
+        if result is not None:
+            successful += 1
+        else:
+            failed += 1
+        
+        # Log progress
+        logger.info(f"Processed {i}/{total_pmids} PMIDs (Success: {successful}, Failed: {failed})")
+        
+        # Add delay between requests if not the last item
+        if i < total_pmids:
+            time.sleep(delay)
+
+    # Log final summary
+    logger.info(f"Processing completed. Total: {total_pmids}, Success: {successful}, Failed: {failed}")
+    return results
+
 
 
 if __name__ == "__main__":

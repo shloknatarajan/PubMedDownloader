@@ -1,15 +1,16 @@
 import requests
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 import os
 import time
+from tqdm import tqdm
 from dotenv import load_dotenv
 from loguru import logger
 
 load_dotenv()
 
 
-def batch_pmcid_from_pmid(
-    pmids: List[str] | str,
+def get_pmcid_from_pmid(
+    pmids: Union[List[str], str],
     email: str = os.getenv("NCBI_EMAIL"),
     batch_size: int = 100,
     delay: float = 0.4,
@@ -18,7 +19,7 @@ def batch_pmcid_from_pmid(
     Convert a list of PMIDs to PMCIDs using NCBI's ID Converter API.
 
     Args:
-        pmids: List of PMIDs (as strings).
+        pmids: List of PMIDs (as strings) or a single PMID (as a string).
         email: Your email address for NCBI tool identification.
         batch_size: Number of PMIDs to send per request (max: 200).
         delay: Seconds to wait between requests (default 0.4 to respect NCBI).
@@ -40,11 +41,11 @@ def batch_pmcid_from_pmid(
         pmids = [str(pmid) for pmid in pmids]
 
     # Process remaining PMIDs
-    for i in range(0, len(pmids), batch_size):
+    logger.info(f"Starting conversion of {len(pmids)} PMIDs to PMCIDs")
+    for i in tqdm(range(0, len(pmids), batch_size), desc="Converting PMIDs to PMCIDs", unit="batch"):
         batch = pmids[i : i + batch_size]
         batch_str = [str(pmid) for pmid in batch]
         ids_str = ",".join(batch_str)
-        logger.info(f"Processing PMIDs {i + 1} to {i + len(batch)}...")
 
         params = {
             "tool": "pmid2pmcid_tool",
@@ -62,9 +63,7 @@ def batch_pmcid_from_pmid(
                 pmid = record.get("pmid")
                 pmcid = record.get("pmcid")
                 results[pmid] = pmcid if pmcid else None
-                if pmcid:
-                    logger.info(f"PMID {pmid} → PMCID {pmcid}")
-                else:
+                if not pmcid:
                     logger.warning(f"PMID {pmid} has no PMCID available.")
         except Exception as e:
             logger.error(f"Failed batch starting at index {i}: {e}")
@@ -72,5 +71,5 @@ def batch_pmcid_from_pmid(
                 results[pmid] = None
 
         time.sleep(delay)
-
+    logger.info(f"Processed {len(pmids)} PMIDs")
     return results
