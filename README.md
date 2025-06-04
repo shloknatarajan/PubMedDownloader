@@ -1,6 +1,6 @@
 # PubMed PMID to Markdown Converter
 
-A comprehensive tool for converting PubMed articles from PMIDs to clean, structured markdown format. This project automatically handles the entire pipeline from PMID to full-text markdown, including PMCID resolution, HTML extraction, and intelligent content conversion.
+A comprehensive tool for converting PubMed articles from article PMIDs to clean, structured markdown format. This project automatically handles the entire pipeline from PMID to full-text markdown, including PMCID resolution, HTML extraction, and intelligent content conversion.
 
 ## Overview
 
@@ -62,6 +62,7 @@ python -m src.pubmed_downloader --file_path=data/pmids.txt --save_dir=data
 ```
 
 **Convert existing HTML to markdown:**
+This converts HTML found at data/html to markdown
 ```bash
 # Using pixi task  
 pixi run convert-local-html
@@ -71,6 +72,7 @@ python -m src.markdown_from_html
 ```
 
 **Update processing records:**
+This keeps track of conversions and what you have downloaded
 ```bash
 # Using pixi task
 pixi run update-records
