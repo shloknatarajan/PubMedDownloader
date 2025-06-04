@@ -1,16 +1,276 @@
-# Convert Pubmed Article (PMID) to Markdown
-Go from a PMID to the full article text in markdown format as long as the article has a valid PMCID
+# PubMed PMID to Markdown Converter
+
+A comprehensive tool for converting PubMed articles from PMIDs to clean, structured markdown format. This project automatically handles the entire pipeline from PMID to full-text markdown, including PMCID resolution, HTML extraction, and intelligent content conversion.
+
+## Overview
+
+This tool enables researchers to:
+- Convert PubMed article PMIDs to full-text markdown
+- Preserve scientific content including tables, figures, equations, and references
+- Batch process multiple articles efficiently
+- Maintain local caches for performance
+- Track processing records and metadata
+
+## Features
+
+- **Complete Pipeline**: PMID → PMCID → HTML → Markdown
+- **Intelligent Caching**: Avoids redundant API calls with configurable cache expiry
+- **Batch Processing**: Efficient handling of multiple articles
+- **Content Preservation**: Tables, figures, citations, and mathematical equations
+- **Robust Error Handling**: Graceful failure handling and logging
+- **Record Management**: Track processing status and metadata
+
+## Installation
+
+This project uses [Pixi](https://pixi.sh/) for dependency management:
+
+```bash
+# Install dependencies
+pixi install
+
+# Activate the environment
+pixi shell
+```
+
+## Setup
+
+1. Create a `.env` file in the project root:
+```env
+NCBI_EMAIL=your-email@institution.edu
+```
+
+2. Ensure required directories exist (created automatically):
+```
+data/
+├── html/          # Raw HTML files from PMC
+├── markdown/      # Converted markdown files
+├── cache/         # PMID to PMCID mapping cache
+└── records.csv    # Processing records
+```
 
 ## Usage
-```
-python -m src.markdown_from_pmid --pmid <PIMD> --save_dir <data>
+
+### Command Line Interface
+
+**Convert PMIDs from a file:**
+```bash
+# Using pixi task
+pixi run convert-local-pmids
+
+# Or directly
+python -m src.pubmed_downloader --file_path=data/pmids.txt --save_dir=data
 ```
 
-## Examples for testing
-| PMID | PMCID | Link |  Notes |
-| ---- | ----- | ----- | ----- |
-| 12895196 | PMC1884285 | https://pmc.ncbi.nlm.nih.gov/articles/PMC1884285/ | Intervention study|
+**Convert existing HTML to markdown:**
+```bash
+# Using pixi task  
+pixi run convert-local-html
+
+# Or directly
+python -m src.markdown_from_html
+```
+
+**Update processing records:**
+```bash
+# Using pixi task
+pixi run update-records
+
+# Or directly
+python -m src.manage_records
+```
+
+### Python API
+
+**In-memory processing (no files created):**
+```python
+from src.pubmed_downloader import PubMedDownloader
+
+converter = PubMedDownloader()
+# Returns markdown string directly - no files saved
+markdown = converter.single_pmid_to_markdown("12895196")
+print(markdown)
+```
+
+**File-based processing (saves to disk):**
+```python
+from src.pubmed_downloader import PubMedDownloader
+
+converter = PubMedDownloader()
+pmids = ["12895196", "17872605", "25051018"]
+# Downloads HTML and saves both HTML and markdown files to data/ directory
+converter.pmids_to_markdown(pmids, save_dir="data")
+```
+
+#### Key Differences
+
+| Function | Creates Files | Returns Content | Use Case |
+|----------|---------------|-----------------|----------|
+| `single_pmid_to_markdown()` | No | Returns markdown string | Quick conversions, API usage, testing |
+| `pmids_to_markdown()` | Yes | None | Batch processing, building datasets, archival |
+| `local_html_to_markdown()` | Yes | None | Converting existing HTML files |
+| `pmcids_to_html()` | Yes | None | Downloading HTML for later processing |
+
+**File-based functions** create organized directory structures:
+- `data/html/` - Raw HTML files from PMC  
+- `data/markdown/` - Converted markdown files
+- `data/cache/` - PMID→PMCID mapping cache
+- `data/records.csv` - Processing metadata
+
+**In-memory functions** return content directly without creating files, ideal for programmatic use or when you only need the converted text.
+
+**Working with records:**
+```python
+from src.manage_records import get_scraped_pmids, create_records
+
+# Get all processed PMIDs
+pmids = get_scraped_pmids()
+
+# Regenerate records from markdown files
+records = create_records()
+```
+
+## Core Components
+
+### 1. PubMedDownloader (`src/pubmed_downloader.py`)
+Main orchestrator class that handles the complete pipeline:
+- PMID to PMCID conversion
+- HTML extraction from PMC
+- Markdown conversion
+- File management and caching
+
+### 2. PMCID Resolution (`src/pmcid_from_pmid.py`)
+Converts PMIDs to PMCIDs using NCBI's ID Converter API:
+- Batch processing with configurable delays
+- Intelligent caching with expiry
+- Rate limiting to respect NCBI guidelines
+
+### 3. HTML Extraction (`src/html_from_pmcid.py`)
+Fetches raw HTML content from PubMed Central using PMCIDs.
+
+### 4. HTML to Markdown Conversion (`src/markdown_from_html.py`)
+Converts PMC HTML to clean markdown:
+- Preserves scientific content structure
+- Handles tables, figures, and equations
+- Maintains citation integrity
+- Extracts metadata and references
+
+### 5. Record Management (`src/manage_records.py`)
+Tracks processing status and metadata:
+- Creates records from existing markdown files
+- Validates data completeness
+- Manages processing history
+
+## Output Format
+
+Generated markdown files include:
+
+```markdown
+# Article Title
+
+**Authors:** Author 1, Author 2  
+**Journal:** Journal Name  
+**DOI:** https://doi.org/...  
+**PMID:** 12345678  
+**PMCID:** PMC1234567  
+**URL:** https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/
+
+## Abstract
+[Abstract content with preserved formatting]
+
+## Introduction
+[Introduction content]
+
+## Methods
+[Methods with subsections]
+
+### Table 1: Characteristics
+| Variable | Value |
+|----------|-------|
+| Sample   | Data  |
+
+### Figure 1: Results
+![Figure 1](https://cdn.ncbi.nlm.nih.gov/pmc/blobs/...)
+Figure caption with detailed description.
+
+## Results
+[Results content with cross-references]
+
+## Discussion
+[Discussion content]
+
+## References
+1. Author et al. Title. *Journal*. Year. [DOI](link) [PMC](link) [PubMed](link)
+2. [Additional references...]
+```
+
+## Examples for Testing
+
+| PMID | PMCID | Link | Notes |
+|------|-------|------|-------|
+| 12895196 | PMC1884285 | https://pmc.ncbi.nlm.nih.gov/articles/PMC1884285/ | Intervention study |
 | 17872605 | PMC1952551 | https://pmc.ncbi.nlm.nih.gov/articles/PMC1952551/ | Case study |
+| 25051018 | PMC4381041 | https://pmc.ncbi.nlm.nih.gov/articles/PMC4381041/ | Research article |
 
-## Notes
-Make sure to have a .env with your NCBI_EMAIL=your-email@school.edu
+## Configuration
+
+### Environment Variables
+- `NCBI_EMAIL`: Required for NCBI API access
+- `PMID_CACHE_DIR`: Cache directory (default: `data/cache`)
+- `PMID_CACHE_FILE`: Cache filename (default: `pmid_to_pmcid.json`)
+
+### Pixi Tasks
+- `update-records`: Update processing records
+- `convert-local-html`: Convert HTML files to markdown
+- `convert-local-pmids`: Convert PMIDs from file
+
+## Error Handling
+
+The tool includes comprehensive error handling:
+- **Missing PMCIDs**: Logs warnings for PMIDs without PMC coverage
+- **Network Issues**: Retries with exponential backoff
+- **Malformed HTML**: Graceful degradation with content extraction
+- **File I/O Errors**: Detailed logging and recovery options
+
+## Performance Features
+
+- **Caching**: PMID→PMCID mappings cached for 30 days
+- **Batch Processing**: API calls optimized for NCBI rate limits
+- **Incremental Processing**: Skips already-processed files
+- **Parallel Operations**: Concurrent file operations where possible
+
+## Contributing
+
+The project follows standard Python conventions:
+- Type hints throughout
+- Comprehensive logging with loguru
+- Error handling at all API boundaries
+- Modular design for easy extension
+
+## Dependencies
+
+Key dependencies managed through Pixi:
+- `requests`: HTTP client for API calls
+- `beautifulsoup4`: HTML parsing and conversion
+- `pandas`: Data management and records
+- `loguru`: Structured logging
+- `biopython`: Bioinformatics utilities
+- `tqdm`: Progress bars
+- `python-dotenv`: Environment configuration
+
+## License
+
+This project is part of research conducted at Stanford University in the Daneshjou Lab.
+
+## Troubleshooting
+
+**Common Issues:**
+1. **No PMCID found**: Not all PMIDs have PMC coverage
+2. **Network timeouts**: Check internet connection and NCBI API status
+3. **Missing markdown content**: Verify HTML extraction was successful
+4. **Cache issues**: Clear `data/cache/` directory if needed
+
+**Debugging:**
+- Check logs for detailed error messages
+- Verify `.env` file configuration
+- Ensure sufficient disk space for output files
+- Test with known working PMIDs first
