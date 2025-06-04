@@ -219,9 +219,14 @@ Figure caption with detailed description.
 - `PMID_CACHE_FILE`: Cache filename (default: `pmid_to_pmcid.json`)
 
 ### Pixi Tasks
-- `update-records`: Update processing records
-- `convert-local-html`: Convert HTML files to markdown
-- `convert-local-pmids`: Convert PMIDs from file
+
+The project includes several predefined pixi tasks for common operations:
+
+- **`pixi run update-records`**: Scans the `data/markdown/` directory and updates the `data/records.csv` file with metadata from all processed articles. This is useful for regenerating records after manual file operations or to ensure consistency.
+
+- **`pixi run convert-local-html`**: Processes all HTML files in the `data/html/` directory and converts them to markdown format. Saves output to `data/markdown/`. This is ideal when you have already downloaded HTML files and want to convert them in batch.
+
+- **`pixi run convert-local-pmids`**: Reads PMIDs from `data/pmids.txt` (one per line) and processes them through the complete pipeline: PMID → PMCID → HTML → Markdown. Creates organized output in the `data/` directory structure.
 
 ## Error Handling
 
