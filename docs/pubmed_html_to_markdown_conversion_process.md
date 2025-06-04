@@ -1,6 +1,6 @@
 # Process for Converting PubMed HTML to Markdown
 
-Based on analysis of 20+ PMC HTML files from the raw_html directory.
+Based on analysis of 20+ PMC HTML files from the html directory.
 
 ## Document Structure Analysis
 

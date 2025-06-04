@@ -591,10 +591,10 @@ def main():
 
 def run_local():
     converter = PubMedHTMLToMarkdownConverter()
-    input_files = os.listdir("data/raw_html")
+    input_files = os.listdir("data/html")
     for file in tqdm.tqdm(input_files, desc="Converting HTML to Markdown"):
         converter = PubMedHTMLToMarkdownConverter()
-        markdown_content = converter.convert_file(f"data/raw_html/{file}")
+        markdown_content = converter.convert_file(f"data/html/{file}")
         os.makedirs("data/markdown", exist_ok=True)
         with open(f"data/markdown/{file.replace('.html', '.md')}", 'w', encoding='utf-8') as f:
             f.write(markdown_content)

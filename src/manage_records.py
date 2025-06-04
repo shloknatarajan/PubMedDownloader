@@ -22,7 +22,7 @@ def get_scraped_pmids(update: bool = False) -> List[str]:
         records = create_records()
     else:
         records = pd.read_csv(os.path.join("data", "records.csv"))
-    pmid_list = records['PMID'].tolist()
+    pmid_list = records['pmid'].tolist()
     return pmid_list
 
 def get_scraped_pmcids(update: bool = False) -> List[str]:
@@ -38,7 +38,7 @@ def get_scraped_pmcids(update: bool = False) -> List[str]:
         records = create_records()
     else:
         records = pd.read_csv(os.path.join("data", "records.csv"))
-    pmcid_list = records['PMCID'].tolist()
+    pmcid_list = records['pmcid'].tolist()
     return pmcid_list
 
 def parse_markdown_metadata(markdown_text: str)-> dict:
@@ -62,17 +62,17 @@ def parse_markdown_metadata(markdown_text: str)-> dict:
     # Extract PMCID
     pmcid_match = re.search(pmcid_pattern, markdown_text)
     if pmcid_match:
-        metadata['PMCID'] = pmcid_match.group(1).strip()
+        metadata['pmcid'] = pmcid_match.group(1).strip()
     
     # Extract PMID
     pmid_match = re.search(pmid_pattern, markdown_text)
     if pmid_match:
-        metadata['PMID'] = pmid_match.group(1).strip()
+        metadata['pmid'] = pmid_match.group(1).strip()
     
     # Extract URL
     url_match = re.search(url_pattern, markdown_text)
     if url_match:
-        metadata['URL'] = url_match.group(1).strip()
+        metadata['url'] = url_match.group(1).strip()
     
     return metadata
     
@@ -87,13 +87,13 @@ def validate_records(records: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: DataFrame containing only the records with missing fields
     """
     # Check for missing values in required columns
-    missing_mask = records[['PMID', 'PMCID', 'URL']].isna().any(axis=1)
+    missing_mask = records[['pmid', 'pmcid', 'url']].isna().any(axis=1)
     missing_records = records[missing_mask]
     
     if not missing_records.empty:
         logger.warning(f"Found {len(missing_records)} records with missing fields")
         for _, row in missing_records.iterrows():
-            missing_fields = [col for col in ['PMID', 'PMCID', 'URL'] if pd.isna(row[col])]
+            missing_fields = [col for col in ['pmid', 'pmcid', 'url'] if pd.isna(row[col])]
             logger.warning(f"Record {row['markdown_path']} is missing: {', '.join(missing_fields)}")
     
     return missing_records
@@ -113,18 +113,18 @@ def create_records() -> pd.DataFrame:
     for file in os.listdir(markdown_path):
         if file.endswith(".md"):
             row = {
-                "PMID": None,
-                "PMCID": None,
+                "pmid": None,
+                "pmcid": None,
                 "markdown_path": f"{markdown_path}/{file}",
-                "URL": None,
+                "url": None,
             }
             metadata = parse_markdown_metadata(open(f"{markdown_path}/{file}", "r").read())
-            if metadata['PMID'] is not None:
-                row['PMID'] = metadata['PMID']
-            if metadata['PMCID'] is not None:
-                row['PMCID'] = metadata['PMCID']
-            if metadata['URL'] is not None:
-                row['URL'] = metadata['URL']
+            if metadata['pmid'] is not None:
+                row['pmid'] = metadata['pmid']
+            if metadata['pmcid'] is not None:
+                row['pmcid'] = metadata['pmcid']
+            if metadata['url'] is not None:
+                row['url'] = metadata['url']
             records.append(row)
 
     # Create DataFrame from list of records

@@ -6,7 +6,7 @@ This uses a standard get request with a user agent and accept header to fetch th
 import argparse
 import requests
 from loguru import logger
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 def get_html_from_pmcid(pmcid: str) -> Optional[str]:
@@ -21,12 +21,15 @@ def get_html_from_pmcid(pmcid: str) -> Optional[str]:
     Returns:
         Optional[str]: The article html text if successful, None if there was an error
     """
+    if not isinstance(pmcid, str):
+        logger.error("pmcid must be a string")
+        return None
+    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid}/?report=classic"
-    logger.info(f"Fetching article from {url}")
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()  # This will raise an exception for 4XX/5XX status codes

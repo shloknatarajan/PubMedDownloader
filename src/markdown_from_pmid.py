@@ -53,10 +53,10 @@ def process_single_pmcid(pmcid: str, save_dir: Optional[str] = "data") -> Option
         return None
 
     if save_dir is not None:
-        # Save raw html to data/raw_html
-        save_file(f"{save_dir}/raw_html/{pmcid}.html", raw_html)
-        # Save markdown to data/articles
-        save_file(f"{save_dir}/articles/{pmcid}.md", markdown)
+        # Save raw html to data/html
+        save_file(f"{save_dir}/html/{pmcid}.html", raw_html)
+        # Save markdown to data/markdown
+        save_file(f"{save_dir}/markdown/{pmcid}.md", markdown)
 
     return markdown
 

@@ -37,6 +37,13 @@
             "module": "src.markdown_from_pmid",
             "args": ["--pmid", "12895196", "--save_dir", "data"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Pubmed Converter",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "module": "src.pubmed_downloader",
         }
     ]
 }
