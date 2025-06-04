@@ -7,7 +7,6 @@ A comprehensive tool for converting PubMed articles from article PMIDs to clean,
 This tool enables researchers to:
 - Convert PubMed article PMIDs to full-text markdown
 - Preserve scientific content including tables, figures, equations, and references
-- Batch process multiple articles efficiently
 - Maintain local caches for performance
 - Track processing records and metadata
 
