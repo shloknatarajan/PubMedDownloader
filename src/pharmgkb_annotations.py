@@ -13,7 +13,9 @@ The key function is get_pmid_list(), which loads the PMIDs from the variant anno
 """
 
 
-def download_and_extract_variant_annotations(override: bool = False, save_dir: str = "data") -> str:
+def download_and_extract_variant_annotations(
+    override: bool = False, save_dir: str = "data"
+) -> str:
     """
     Downloads and extracts the variant annotations zip file.
     If the folder already exists, it will be skipped unless override parameter is set to True.
@@ -46,7 +48,9 @@ def download_and_extract_variant_annotations(override: bool = False, save_dir: s
     return extract_dir
 
 
-def load_raw_variant_annotations(override: bool = False, save_dir: str = "data") -> pd.DataFrame:
+def load_raw_variant_annotations(
+    override: bool = False, save_dir: str = "data"
+) -> pd.DataFrame:
     """
     Loads the variant annotations tsv file.
     If the file does not exist, it will be downloaded and extracted.
@@ -94,7 +98,7 @@ def get_pmid_list(override: bool = False, save_dir: str = "data") -> list:
     """
     Loads the pmid list from the variant annotations tsv file.
     """
-    pmid_list_path = os.path.join(save_dir, "pmid_list.txt")
+    pmid_list_path = os.path.join(save_dir, "pharmgkb_pmids.txt")
     if os.path.exists(pmid_list_path):
         logger.info(f"Loading PMIDs from {pmid_list_path}")
         with open(pmid_list_path, "r") as f:

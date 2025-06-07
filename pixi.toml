@@ -9,6 +9,8 @@ version = "0.1.0"
 update-records = "python -m src.manage_records"
 convert-local-html = "python -m src.markdown_from_html"
 convert-local-pmids = "python -m src.pubmed_downloader --file_path=data/pmids.txt"
+clean-pharmgkb = "rm -rf data/variantAnnotations data/pharmgkb_pmids.txt"
+black = "python -m black ."
 
 [dependencies]
 python-dotenv = ">=1.1.0,<2"

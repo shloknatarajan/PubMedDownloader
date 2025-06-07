@@ -26,9 +26,9 @@ def _load_cache() -> Dict[str, Dict]:
     cache_path = _get_cache_file_path()
     if not cache_path.exists():
         return {}
-    
+
     try:
-        with open(cache_path, 'r') as f:
+        with open(cache_path, "r") as f:
             return json.load(f)
     except (json.JSONDecodeError, IOError) as e:
         logger.warning(f"Failed to load cache file {cache_path}: {e}")
@@ -39,7 +39,7 @@ def _save_cache(cache: Dict[str, Dict]) -> None:
     """Save cache to file."""
     cache_path = _get_cache_file_path()
     try:
-        with open(cache_path, 'w') as f:
+        with open(cache_path, "w") as f:
             json.dump(cache, f, indent=2)
     except IOError as e:
         logger.error(f"Failed to save cache to {cache_path}: {e}")
@@ -47,11 +47,11 @@ def _save_cache(cache: Dict[str, Dict]) -> None:
 
 def _is_cache_entry_valid(entry: Dict, expiry_days: int = 30) -> bool:
     """Check if a cache entry is still valid."""
-    if 'timestamp' not in entry:
+    if "timestamp" not in entry:
         return False
-    
+
     try:
-        cached_time = datetime.fromisoformat(entry['timestamp'])
+        cached_time = datetime.fromisoformat(entry["timestamp"])
         expiry_time = cached_time + timedelta(days=expiry_days)
         return datetime.now() < expiry_time
     except (ValueError, KeyError):
@@ -99,24 +99,34 @@ def get_pmcid_from_pmid(
     cache = _load_cache() if use_cache else {}
     cached_count = 0
     pmids_to_fetch = []
-    
+
     for pmid in pmids:
-        if use_cache and pmid in cache and _is_cache_entry_valid(cache[pmid], cache_expiry_days):
-            results[pmid] = cache[pmid].get('pmcid')
+        if (
+            use_cache
+            and pmid in cache
+            and _is_cache_entry_valid(cache[pmid], cache_expiry_days)
+        ):
+            results[pmid] = cache[pmid].get("pmcid")
             cached_count += 1
         else:
             pmids_to_fetch.append(pmid)
-    
+
     if cached_count > 0:
-        logger.info(f"Found {cached_count} cached PMIDs, fetching {len(pmids_to_fetch)} from API")
-    
+        logger.info(
+            f"Found {cached_count} cached PMIDs, fetching {len(pmids_to_fetch)} from API"
+        )
+
     if not pmids_to_fetch:
         logger.info("All PMIDs found in cache")
         return results
 
     # Process remaining PMIDs
     logger.info(f"Starting conversion of {len(pmids_to_fetch)} PMIDs to PMCIDs")
-    for i in tqdm(range(0, len(pmids_to_fetch), batch_size), desc="Converting PMIDs to PMCIDs", unit="batch"):
+    for i in tqdm(
+        range(0, len(pmids_to_fetch), batch_size),
+        desc="Converting PMIDs to PMCIDs",
+        unit="batch",
+    ):
         batch = pmids_to_fetch[i : i + batch_size]
         batch_str = [str(pmid) for pmid in batch]
         ids_str = ",".join(batch_str)
@@ -133,7 +143,7 @@ def get_pmcid_from_pmid(
             response.raise_for_status()
             data = response.json()
             records = data.get("records", [])
-            
+
             # Update cache with new results
             timestamp = datetime.now().isoformat()
             for record in records:
@@ -142,24 +152,18 @@ def get_pmcid_from_pmid(
                 results[pmid] = pmcid if pmcid else None
                 if not pmcid:
                     logger.warning(f"PMID {pmid} has no PMCID available.")
-                
+
                 # Cache the result
                 if use_cache:
-                    cache[pmid] = {
-                        'pmcid': pmcid,
-                        'timestamp': timestamp
-                    }
-            
+                    cache[pmid] = {"pmcid": pmcid, "timestamp": timestamp}
+
             # Handle PMIDs not found in response
             for pmid in batch:
                 if pmid not in [r.get("pmid") for r in records]:
                     results[pmid] = None
                     if use_cache:
-                        cache[pmid] = {
-                            'pmcid': None,
-                            'timestamp': timestamp
-                        }
-                        
+                        cache[pmid] = {"pmcid": None, "timestamp": timestamp}
+
         except Exception as e:
             logger.error(f"Failed batch starting at index {i}: {e}")
             timestamp = datetime.now().isoformat()
@@ -167,13 +171,10 @@ def get_pmcid_from_pmid(
                 results[pmid] = None
                 # Cache failed lookups to avoid repeated API calls
                 if use_cache:
-                    cache[pmid] = {
-                        'pmcid': None,
-                        'timestamp': timestamp
-                    }
+                    cache[pmid] = {"pmcid": None, "timestamp": timestamp}
 
         time.sleep(delay)
-    
+
     # Save updated cache
     if use_cache and pmids_to_fetch:
         _save_cache(cache)
@@ -182,8 +183,10 @@ def get_pmcid_from_pmid(
     if save_dir is not None:
         results_path = os.path.join(save_dir, "pmcid_from_pmid_results.json")
         if not os.path.exists(results_path) or override:
-            with open(results_path, 'w') as f:
+            with open(results_path, "w") as f:
                 json.dump(results, f, indent=2)
-        
-    logger.info(f"Processed {len(pmids)} PMIDs ({cached_count} from cache, {len(pmids_to_fetch)} from API)")
+
+    logger.info(
+        f"Processed {len(pmids)} PMIDs ({cached_count} from cache, {len(pmids_to_fetch)} from API)"
+    )
     return results
