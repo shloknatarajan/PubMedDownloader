@@ -65,6 +65,8 @@ def get_pmcid_from_pmid(
     delay: float = 0.4,
     use_cache: bool = True,
     cache_expiry_days: int = 30,
+    save_dir: str = "data",
+    override: bool = False,
 ) -> Dict[str, Optional[str]]:
     """
     Convert a list of PMIDs to PMCIDs using NCBI's ID Converter API.
@@ -175,6 +177,13 @@ def get_pmcid_from_pmid(
     # Save updated cache
     if use_cache and pmids_to_fetch:
         _save_cache(cache)
+
+    # Save results to file
+    if save_dir is not None:
+        results_path = os.path.join(save_dir, "pmcid_from_pmid_results.json")
+        if not os.path.exists(results_path) or override:
+            with open(results_path, 'w') as f:
+                json.dump(results, f, indent=2)
         
     logger.info(f"Processed {len(pmids)} PMIDs ({cached_count} from cache, {len(pmids_to_fetch)} from API)")
     return results
