@@ -18,6 +18,7 @@ This tool enables researchers to:
 - **Content Preservation**: Tables, figures, citations, and mathematical equations
 - **Robust Error Handling**: Graceful failure handling and logging
 - **Record Management**: Track processing status and metadata
+- **PharmGKB Integration**: Extract PMIDs from PharmGKB variant annotations for pharmacogenomics research
 
 ## Installation
 
@@ -80,6 +81,16 @@ pixi run update-records
 python -m src.manage_records
 ```
 
+**Generate PharmGKB PMID list:**
+This downloads PharmGKB variant annotations and extracts PMIDs
+```bash
+# Using pixi task (if defined)
+pixi run pharmgkb-pmids
+
+# Or directly
+python -m src.pharmgkb_annotations
+```
+
 ### Python API
 
 **In-memory processing (no files created):**
@@ -130,6 +141,107 @@ pmids = get_scraped_pmids()
 records = create_records()
 ```
 
+**Working with PharmGKB data:**
+```python
+from src.pharmgkb_annotations import get_pmid_list, variant_annotations_pipeline
+
+# Get PMIDs from PharmGKB variant annotations
+pmids = get_pmid_list()
+print(f"Found {len(pmids)} unique PMIDs from PharmGKB")
+
+# Run complete pipeline (download + extract PMIDs)
+variant_annotations_pipeline(override=False, save_dir="data")
+```
+
+## PharmGKB Integration Tutorial
+
+This section demonstrates how to use the PharmGKB functionality to download pharmacogenomics literature from PharmGKB's curated variant annotations.
+
+### Step 1: Extract PMIDs from PharmGKB
+
+```python
+from src.pharmgkb_annotations import get_pmid_list, variant_annotations_pipeline
+
+# Download PharmGKB variant annotations and extract PMIDs
+pmids = get_pmid_list(save_dir="data")
+print(f"Extracted {len(pmids)} unique PMIDs from PharmGKB variant annotations")
+```
+
+This will:
+1. Download the PharmGKB variant annotations ZIP file (~20MB)
+2. Extract the `var_drug_ann.tsv` file containing variant-drug associations
+3. Extract all unique PMIDs and save them to `data/pharmgkb_pmids.txt`
+4. Return the list of PMIDs for further processing
+
+### Step 2: Convert PharmGKB PMIDs to Markdown
+
+```python
+from src.pubmed_downloader import PubMedDownloader
+from src.pharmgkb_annotations import get_pmid_list
+
+# Get PharmGKB PMIDs
+pharmgkb_pmids = get_pmid_list(save_dir="data")
+
+# Convert to string format (PubMedDownloader expects strings)
+pmid_strings = [str(pmid) for pmid in pharmgkb_pmids]
+
+# Process through the complete pipeline
+converter = PubMedDownloader()
+converter.pmids_to_markdown(pmid_strings, save_dir="data")
+```
+
+### Step 3: Complete PharmGKB Pipeline
+
+For a complete workflow, you can combine both steps:
+
+```python
+from src.pharmgkb_annotations import variant_annotations_pipeline, get_pmid_list
+from src.pubmed_downloader import PubMedDownloader
+
+# Step 1: Download PharmGKB data and extract PMIDs
+print("Downloading PharmGKB variant annotations...")
+variant_annotations_pipeline(save_dir="data")
+
+# Step 2: Get the PMID list
+pmids = get_pmid_list(save_dir="data")
+pmid_strings = [str(pmid) for pmid in pmids[:50]]  # Process first 50 for testing
+
+# Step 3: Convert to markdown
+print(f"Converting {len(pmid_strings)} PMIDs to markdown...")
+converter = PubMedDownloader()
+converter.pmids_to_markdown(pmid_strings, save_dir="data")
+
+print("PharmGKB pipeline complete!")
+```
+
+### Command Line Workflow
+
+```bash
+# 1. Download PharmGKB data and extract PMIDs
+python -m src.pharmgkb_annotations
+
+# 2. Copy PMIDs to the standard input file
+cp data/pharmgkb_pmids.txt data/pmids.txt
+
+# 3. Convert PMIDs to markdown using existing pipeline
+pixi run convert-local-pmids
+
+# 4. Update processing records
+pixi run update-records
+```
+
+### What You Get
+
+After running the PharmGKB pipeline, you'll have:
+
+- **`data/variantAnnotations/`**: Raw PharmGKB variant annotation data
+- **`data/pharmgkb_pmids.txt`**: List of unique PMIDs from PharmGKB (~2000+ articles)
+- **`data/html/`**: Raw HTML files for successfully downloaded articles
+- **`data/markdown/`**: Converted markdown files for pharmacogenomics literature
+- **`data/records.csv`**: Processing metadata and status tracking
+
+This creates a comprehensive dataset of pharmacogenomics literature in clean, structured markdown format suitable for research, analysis, or building knowledge bases.
+
 ## Core Components
 
 ### 1. PubMedDownloader (`src/pubmed_downloader.py`)
@@ -160,6 +272,12 @@ Tracks processing status and metadata:
 - Creates records from existing markdown files
 - Validates data completeness
 - Manages processing history
+
+### 6. PharmGKB Integration (`src/pharmgkb_annotations.py`)
+Downloads and processes PharmGKB variant annotations:
+- Downloads variant annotations from PharmGKB API
+- Extracts unique PMIDs from pharmacogenomics literature
+- Integrates with the main conversion pipeline
 
 ## Output Format
 
