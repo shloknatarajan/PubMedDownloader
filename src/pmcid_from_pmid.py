@@ -181,7 +181,11 @@ def get_pmcid_from_pmid(
 
     # Save results to file
     if save_dir is not None:
-        results_path = os.path.join(save_dir, "pmcid_from_pmid_results.json")
+        results_path = os.path.join(
+            save_dir,
+            f"pmcid_from_pmid_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        )
+        logger.info(f"Saving results to {results_path}")
         if not os.path.exists(results_path) or override:
             with open(results_path, "w") as f:
                 json.dump(results, f, indent=2)

@@ -142,7 +142,7 @@ class PubMedDownloader:
         Convert a list of pmids to pmcids
         """
         logger.info(f"Getting PMCIDs for {len(pmids)} PMIDs")
-        pmcid_mapping = get_pmcid_from_pmid(pmids)
+        pmcid_mapping = get_pmcid_from_pmid(pmids, save_dir=save_dir)
         pmcids = [pmcid_mapping.get(str(pmid)) for pmid in pmids]
         valid_pmcids = [pmcid for pmcid in pmcids if pmcid is not None]
         logger.info(f"Found {len(valid_pmcids)} valid PMCIDs out of {len(pmids)} PMIDs")

@@ -398,3 +398,7 @@ This project is part of research conducted at Stanford University in the Daneshj
 - Verify `.env` file configuration
 - Ensure sufficient disk space for output files
 - Test with known working PMIDs first
+
+
+## Todos:
+- Have the PMID to PMCID converter utilize the cache as well
