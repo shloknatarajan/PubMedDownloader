@@ -327,18 +327,19 @@ class PubMedHTMLToMarkdownConverter:
         """Process paragraph with inline formatting and citations."""
         text = ""
 
-        for element in p_tag.descendants:
+        def process_element(element):
+            """Process a single element and return its markdown representation."""
             if isinstance(element, NavigableString):
-                text += str(element)
+                return str(element)
             elif isinstance(element, Tag):
                 if element.name == "em" or element.name == "i":
-                    text += f"*{element.get_text()}*"
+                    return f"*{element.get_text()}*"
                 elif element.name == "strong" or element.name == "b":
-                    text += f"**{element.get_text()}**"
+                    return f"**{element.get_text()}**"
                 elif element.name == "sub":
-                    text += f"_{element.get_text()}_"
+                    return f"_{element.get_text()}_"
                 elif element.name == "sup":
-                    text += f"^{element.get_text()}^"
+                    return f"^{element.get_text()}^"
                 elif element.name == "a":
                     # Handle citations and cross-references
                     link_text = element.get_text().strip()
@@ -346,14 +347,23 @@ class PubMedHTMLToMarkdownConverter:
 
                     if href.startswith("#"):
                         # Internal reference
-                        text += f"[{link_text}]({href})"
+                        return f"[{link_text}]({href})"
                     elif href:
                         # External link
-                        text += f"[{link_text}]({href})"
+                        return f"[{link_text}]({href})"
                     else:
-                        text += link_text
+                        return link_text
                 else:
-                    text += element.get_text()
+                    # For any other tag, recursively process its contents
+                    result = ""
+                    for child in element.contents:
+                        result += process_element(child)
+                    return result
+            return ""
+
+        # Process all direct contents of the paragraph
+        for element in p_tag.contents:
+            text += process_element(element)
 
         return self._clean_text(text)
 
