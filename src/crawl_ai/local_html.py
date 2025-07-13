@@ -411,4 +411,4 @@ async def crawl_local_html_files(html_dir, output_dir):
                 logger.error(f"Error processing {html_file.name}: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(crawl_local_html_files("data/test/html", "data/test/markdown"))
+    asyncio.run(crawl_local_html_files("data/test/html", "data/test/crawl4ai"))
