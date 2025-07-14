@@ -391,17 +391,17 @@ class PubMedHTMLToMarkdownConverter:
         caption_div = table_section.find("div", class_="caption")
         if not caption_div:
             caption_div = table_section.find("div", class_="tw-foot")
-        
+
         if caption_div:
             caption = self._clean_text(caption_div.get_text())
             # Extract table number from title if available
             table_number = ""
             if title:
                 # Try to extract table number from title like "Table 1." or "Table 1:"
-                match = re.search(r'Table\s+(\d+)', title, re.IGNORECASE)
+                match = re.search(r"Table\s+(\d+)", title, re.IGNORECASE)
                 if match:
                     table_number = match.group(1)
-            
+
             # Add blank line before caption to prevent merging with table
             lines.append("")
             if table_number:
@@ -450,7 +450,7 @@ class PubMedHTMLToMarkdownConverter:
             body_rows = table_tag.find_all("tr")
             if header_rows:
                 # Remove header rows if we already processed them
-                body_rows = body_rows[len(header_rows):]
+                body_rows = body_rows[len(header_rows) :]
 
         for row in body_rows:
             cells = row.find_all(["td", "th"])
@@ -486,7 +486,7 @@ class PubMedHTMLToMarkdownConverter:
         if rows:
             # Determine if we have proper headers
             has_proper_header = thead and header_rows
-            
+
             if has_proper_header:
                 header = rows[0]
                 data_rows = rows[1:]
@@ -495,7 +495,11 @@ class PubMedHTMLToMarkdownConverter:
                 # Otherwise create generic headers
                 first_row = rows[0]
                 # Check if first row looks like headers (contains non-numeric text)
-                if any(not cell.replace(".", "").replace("-", "").isdigit() and cell.strip() for cell in first_row):
+                if any(
+                    not cell.replace(".", "").replace("-", "").isdigit()
+                    and cell.strip()
+                    for cell in first_row
+                ):
                     header = first_row
                     data_rows = rows[1:]
                 else:
@@ -510,7 +514,7 @@ class PubMedHTMLToMarkdownConverter:
 
             # Header row
             lines.append("| " + " | ".join(header) + " |")
-            
+
             # Separator row - use consistent width for better formatting
             separator_cols = ["---"] * len(header)
             lines.append("| " + " | ".join(separator_cols) + " |")
@@ -520,7 +524,7 @@ class PubMedHTMLToMarkdownConverter:
                 # Ensure row has same length as header
                 while len(row) < len(header):
                     row.append("")
-                lines.append("| " + " | ".join(row[:len(header)]) + " |")
+                lines.append("| " + " | ".join(row[: len(header)]) + " |")
 
         return "\n".join(lines)
 
@@ -696,6 +700,7 @@ def run_local():
             f.write(markdown_content)
     logger.info(f"Converted {len(input_files)} HTML files to Markdown")
 
+
 def single_file(pmcid: str):
     converter = PubMedHTMLToMarkdownConverter()
     markdown_content = converter.convert_file(f"data/html/{pmcid}.html")
@@ -704,8 +709,10 @@ def single_file(pmcid: str):
         f.write(markdown_content)
     logger.info(f"Converted {pmcid} to Markdown")
 
+
 if __name__ == "__main__":
     import sys
+
     args = sys.argv[1:]
     if args:
         single_file(args[0])
