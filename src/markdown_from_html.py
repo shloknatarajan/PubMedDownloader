@@ -373,24 +373,42 @@ class PubMedHTMLToMarkdownConverter:
 
         # Extract table title
         title_tag = table_section.find(["h3", "h4"], class_="obj_head")
+        title = ""
         if title_tag:
             title = self._clean_text(title_tag.get_text())
             lines.append(f"### {title}")
             lines.append("")
 
-        # Extract table caption
-        caption_div = table_section.find("div", class_="caption")
-        if caption_div:
-            caption = self._clean_text(caption_div.get_text())
-            lines.append(caption)
-            lines.append("")
-
-        # Extract and convert table
+        # Extract and convert table first
         table_tag = table_section.find("table")
         if table_tag:
             table_md = self._convert_table_to_markdown(table_tag)
             if table_md:
                 lines.append(table_md)
+
+        # Extract table caption and place below table
+        # Look for caption in both 'caption' class and 'tw-foot' class
+        caption_div = table_section.find("div", class_="caption")
+        if not caption_div:
+            caption_div = table_section.find("div", class_="tw-foot")
+        
+        if caption_div:
+            caption = self._clean_text(caption_div.get_text())
+            # Extract table number from title if available
+            table_number = ""
+            if title:
+                # Try to extract table number from title like "Table 1." or "Table 1:"
+                match = re.search(r'Table\s+(\d+)', title, re.IGNORECASE)
+                if match:
+                    table_number = match.group(1)
+            
+            # Add blank line before caption to prevent merging with table
+            lines.append("")
+            if table_number:
+                lines.append(f"Table {table_number} Caption: {caption}")
+            else:
+                lines.append(f"Table Caption: {caption}")
+            lines.append("")
 
         return "\n".join(lines)
 
@@ -411,8 +429,11 @@ class PubMedHTMLToMarkdownConverter:
                     # Handle colspan
                     colspan = int(cell.get("colspan", 1))
                     text = self._clean_text(cell.get_text()).strip()
-                    # Escape pipe characters in cell content
-                    text = text.replace("|", "\\|")
+                    # Escape pipe characters and clean up text
+                    text = text.replace("|", "\\|").replace("\n", " ")
+                    # Handle empty cells
+                    if not text:
+                        text = " "
                     row_data.append(text)
                     # Add empty cells for colspan > 1
                     for _ in range(colspan - 1):
@@ -435,11 +456,15 @@ class PubMedHTMLToMarkdownConverter:
             cells = row.find_all(["td", "th"])
             row_data = []
             for cell in cells:
-                # Handle colspan
+                # Handle colspan and rowspan
                 colspan = int(cell.get("colspan", 1))
+                rowspan = int(cell.get("rowspan", 1))
                 text = self._clean_text(cell.get_text()).strip()
-                # Escape pipe characters in cell content
-                text = text.replace("|", "\\|")
+                # Escape pipe characters and clean up text
+                text = text.replace("|", "\\|").replace("\n", " ")
+                # Handle empty cells
+                if not text:
+                    text = " "
                 row_data.append(text)
                 # Add empty cells for colspan > 1
                 for _ in range(colspan - 1):
@@ -459,29 +484,43 @@ class PubMedHTMLToMarkdownConverter:
         lines = []
 
         if rows:
-            # Use first row as header (or create generic header if no thead)
-            if thead and header_rows:
+            # Determine if we have proper headers
+            has_proper_header = thead and header_rows
+            
+            if has_proper_header:
                 header = rows[0]
                 data_rows = rows[1:]
             else:
-                # Create generic header for tables without thead
-                header = [f"Col {i+1}" for i in range(max_cols)]
-                data_rows = rows
+                # For tables without proper headers, use first row if it looks like headers
+                # Otherwise create generic headers
+                first_row = rows[0]
+                # Check if first row looks like headers (contains non-numeric text)
+                if any(not cell.replace(".", "").replace("-", "").isdigit() and cell.strip() for cell in first_row):
+                    header = first_row
+                    data_rows = rows[1:]
+                else:
+                    # Create descriptive headers based on content patterns
+                    header = []
+                    for i in range(max_cols):
+                        if i == 0:
+                            header.append("Category")
+                        else:
+                            header.append(f"Value {i}")
+                    data_rows = rows
 
             # Header row
             lines.append("| " + " | ".join(header) + " |")
             
-            # Separator row with proper column width
-            separator_cols = []
-            for cell in header:
-                # Minimum width of 3 for readability
-                width = max(3, len(cell))
-                separator_cols.append("-" * width)
+            # Separator row - use consistent width for better formatting
+            separator_cols = ["---"] * len(header)
             lines.append("| " + " | ".join(separator_cols) + " |")
 
             # Data rows
             for row in data_rows:
-                lines.append("| " + " | ".join(row) + " |")
+                # Ensure row has same length as header
+                while len(row) < len(header):
+                    row.append("")
+                lines.append("| " + " | ".join(row[:len(header)]) + " |")
 
         return "\n".join(lines)
 
@@ -646,17 +685,29 @@ def main():
 
 def run_local():
     converter = PubMedHTMLToMarkdownConverter()
-    input_files = os.listdir("data/test/html")
+    input_files = os.listdir("data/html")
     for file in tqdm.tqdm(input_files, desc="Converting HTML to Markdown"):
         converter = PubMedHTMLToMarkdownConverter()
-        markdown_content = converter.convert_file(f"data/test/html/{file}")
-        os.makedirs("data/test/markdown", exist_ok=True)
+        markdown_content = converter.convert_file(f"data/html/{file}")
+        os.makedirs("data/markdown", exist_ok=True)
         with open(
-            f"data/test/markdown/{file.replace('.html', '.md')}", "w", encoding="utf-8"
+            f"data/markdown/{file.replace('.html', '.md')}", "w", encoding="utf-8"
         ) as f:
             f.write(markdown_content)
     logger.info(f"Converted {len(input_files)} HTML files to Markdown")
 
+def single_file(pmcid: str):
+    converter = PubMedHTMLToMarkdownConverter()
+    markdown_content = converter.convert_file(f"data/html/{pmcid}.html")
+    os.makedirs("data/markdown", exist_ok=True)
+    with open(f"data/markdown/{pmcid}.md", "w", encoding="utf-8") as f:
+        f.write(markdown_content)
+    logger.info(f"Converted {pmcid} to Markdown")
 
 if __name__ == "__main__":
-    run_local()
+    import sys
+    args = sys.argv[1:]
+    if args:
+        single_file(args[0])
+    else:
+        run_local()
