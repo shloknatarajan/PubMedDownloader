@@ -235,6 +235,8 @@ class PubMedHTMLToMarkdownConverter:
                         "class", []
                     ):
                         current_section = element.get_text().strip()
+                        # Remove trailing colon if present to avoid double colons
+                        current_section = current_section.rstrip(':')
                         lines.append(f"**{current_section}:** ")
                     elif element.name == "p" and current_section:
                         text = self._clean_text(element.get_text())
@@ -456,9 +458,8 @@ class PubMedHTMLToMarkdownConverter:
             cells = row.find_all(["td", "th"])
             row_data = []
             for cell in cells:
-                # Handle colspan and rowspan
+                # Handle colspan (markdown doesn't support rowspan)
                 colspan = int(cell.get("colspan", 1))
-                rowspan = int(cell.get("rowspan", 1))
                 text = self._clean_text(cell.get_text()).strip()
                 # Escape pipe characters and clean up text
                 text = text.replace("|", "\\|").replace("\n", " ")
