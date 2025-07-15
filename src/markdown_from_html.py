@@ -236,7 +236,7 @@ class PubMedHTMLToMarkdownConverter:
                     ):
                         current_section = element.get_text().strip()
                         # Remove trailing colon if present to avoid double colons
-                        current_section = current_section.rstrip(':')
+                        current_section = current_section.rstrip(":")
                         lines.append(f"**{current_section}:** ")
                     elif element.name == "p" and current_section:
                         text = self._clean_text(element.get_text())
