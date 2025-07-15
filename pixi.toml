@@ -10,6 +10,7 @@ update-records = "python -m src.manage_records"
 convert-local-html = "python -m src.markdown_from_html"
 convert-local-pmids = "python -m src.pubmed_downloader --file_path=data/pmids.txt"
 clean-pharmgkb = "rm -rf data/variantAnnotations data/pharmgkb_pmids.txt"
+copy-markdown = "python -m src.copy_markdown"
 black = "python -m black ."
 
 [dependencies]
@@ -22,3 +23,4 @@ tqdm = ">=4.67.1,<5"
 biopython = ">=1.85,<2"
 beautifulsoup4 = ">=4.13.4,<5"
 black = ">=25.1.0,<26"
+playwright = ">=1.47.2,<2"
