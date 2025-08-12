@@ -381,10 +381,6 @@ Key dependencies managed through Pixi:
 - `tqdm`: Progress bars
 - `python-dotenv`: Environment configuration
 
-## License
-
-This project is part of research conducted at Stanford University in the Daneshjou Lab.
-
 ## Troubleshooting
 
 **Common Issues:**
