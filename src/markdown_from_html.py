@@ -267,7 +267,10 @@ class PubMedHTMLToMarkdownConverter:
 
         for section in sections:
             # Skip abstract (already handled), references (handled separately), and keywords (part of abstract)
-            if any(cls in section.get("class", []) for cls in ["abstract", "ref-list", "kwd-group"]):
+            if any(
+                cls in section.get("class", [])
+                for cls in ["abstract", "ref-list", "kwd-group"]
+            ):
                 continue
 
             section_content = self._process_section(section)
