@@ -6,6 +6,8 @@ import os
 from loguru import logger
 from tqdm import tqdm
 import argparse
+from pathlib import Path
+import shutil
 
 
 class PubMedDownloader:
@@ -33,13 +35,11 @@ class PubMedDownloader:
         pmcid = pmcid_mapping.get(str(pmid))
 
         if pmcid is None:
-            logger.warning(f"No PMCID found for PMID {pmid}")
             return None
 
         # Get HTML
         html = get_html_from_pmcid(pmcid)
         if html is None:
-            logger.error(f"No HTML found for PMCID {pmcid}")
             return None
 
         # Convert to markdown
@@ -137,15 +137,36 @@ class PubMedDownloader:
             ) as f:
                 f.write(markdown)
 
-    def pmids_to_pmcids(self, pmids: List[str], save_dir: str = "data") -> None:
+    def pmids_to_pmcids(self, pmids: List[str], save_dir: str = "data") -> List[str]:
         """
         Convert a list of pmids to pmcids
         """
-        logger.info(f"Getting PMCIDs for {len(pmids)} PMIDs")
+        # Normalize PMIDs to strings without surrounding whitespace for consistent keying
+        pmids = [str(p).strip() for p in pmids]
+        total = len(pmids)
+        logger.info(f"Getting PMCIDs for {total} PMIDs")
         pmcid_mapping = get_pmcid_from_pmid(pmids, save_dir=save_dir)
-        pmcids = [pmcid_mapping.get(str(pmid)) for pmid in pmids]
+        # Lookup using normalized keys
+        pmcids = [pmcid_mapping.get(str(pmid).strip()) for pmid in pmids]
         valid_pmcids = [pmcid for pmcid in pmcids if pmcid is not None]
-        logger.info(f"Found {len(valid_pmcids)} valid PMCIDs out of {len(pmids)} PMIDs")
+        missing = total - len(valid_pmcids)
+        sample = ", ".join([str(p) for p in valid_pmcids[:5]]) if valid_pmcids else ""
+        # Diagnostics when results look off
+        if len(valid_pmcids) == 0:
+            logger.warning(
+                f"No valid PMCIDs found. Debug: mapping_keys={len(pmcid_mapping.keys())}"
+            )
+            # Show up to 5 sample lookups
+            for pmid in pmids[:5]:
+                key = str(pmid).strip()
+                logger.debug(
+                    f"Lookup sample: PMID {key} -> {pmcid_mapping.get(key)} (in_mapping={key in pmcid_mapping})"
+                )
+        logger.info(
+            f"Valid PMCIDs: {len(valid_pmcids)} / {total} | Missing: {missing}"
+        )
+        if sample:
+            logger.debug(f"Sample PMCIDs: {sample}...")
         return valid_pmcids
 
     def pmcids_to_html(self, pmcids: List[str], save_dir: str = "data") -> None:
@@ -198,6 +219,9 @@ class PubMedDownloader:
             overwrite (bool): Whether to overwrite existing files (default: False)
         """
         pmcids = self.pmids_to_pmcids(pmids, save_dir)
+        # save found pmcids
+        with open(os.path.join(save_dir, "pmcids.txt"), "w") as f:
+            f.write("\n".join(pmcids))
         if not overwrite:
             # Get existing markdown files
             existing_markdown = self.check_existing_markdown_pmcids(save_dir)
@@ -209,6 +233,60 @@ class PubMedDownloader:
         self.pmcids_to_html(pmcids, save_dir)
         self.local_html_to_markdown(save_dir, overwrite=overwrite)
 
+
+def clear_all_caches() -> None:
+    """
+    Remove all cached data created by this package.
+
+    Currently clears:
+    - PMID->PMCID cache file located at `PMID_CACHE_DIR/PMID_CACHE_FILE` (defaults to `data/cache/pmid_to_pmcid.json`).
+    - Empties the `PMID_CACHE_DIR` folder if it exists and becomes empty.
+    """
+    try:
+        # Import locally to avoid circular import at module load
+        from .pmcid_from_pmid import _get_cache_file_path  # type: ignore
+
+        cache_file: Path = _get_cache_file_path()
+        cache_dir: Path = cache_file.parent
+
+        # Remove the cache file if it exists
+        if cache_file.exists():
+            try:
+                cache_file.unlink()
+                logger.info(f"Removed cache file: {cache_file}")
+            except Exception as e:
+                logger.warning(f"Failed to remove cache file {cache_file}: {e}")
+
+        # If the cache directory exists, remove it if empty; otherwise, offer to clear contents
+        if cache_dir.exists():
+            # Attempt to remove directory if empty
+            try:
+                cache_dir.rmdir()
+                logger.info(f"Removed empty cache directory: {cache_dir}")
+            except OSError:
+                # Directory not empty; remove its contents
+                removed_any = False
+                for child in cache_dir.iterdir():
+                    try:
+                        if child.is_dir():
+                            shutil.rmtree(child)
+                        else:
+                            child.unlink()
+                        removed_any = True
+                        logger.info(f"Removed cached item: {child}")
+                    except Exception as e:
+                        logger.warning(f"Failed to remove cached item {child}: {e}")
+                if removed_any:
+                    # Try removing directory again after clearing contents
+                    try:
+                        cache_dir.rmdir()
+                        logger.info(f"Removed cache directory: {cache_dir}")
+                    except Exception:
+                        # It's okay if it still exists; leave it
+                        pass
+        logger.info("All caches cleared.")
+    except Exception as e:
+        logger.error(f"Error while clearing caches: {e}")
 
 def convert_pmids_from_file(
     file_path: str, save_dir: str = "data", overwrite: bool = False
@@ -243,9 +321,16 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to overwrite existing markdown files (default: False)",
     )
+    parser.add_argument(
+        "--clear_caches",
+        action="store_true",
+        help="Clear all caches (PMID->PMCID cache) and exit",
+    )
     args = parser.parse_args()
 
-    if args.file_path:
+    if args.clear_caches:
+        clear_all_caches()
+    elif args.file_path:
         convert_pmids_from_file(args.file_path, args.save_dir, args.overwrite)
     else:
-        parser.error("--file_path is required")
+        parser.error("--file_path is required (or use --clear_caches)")

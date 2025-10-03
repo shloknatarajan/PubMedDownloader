@@ -12,6 +12,7 @@ convert-local-pmids = "python -m src.pubmed_downloader --file_path=data/pmids.tx
 clean-pharmgkb = "rm -rf data/variantAnnotations data/pharmgkb_pmids.txt"
 copy-markdown = "python -m src.copy_markdown"
 black = "python -m black ."
+clear-caches = "python -m src.pubmed_downloader --clear_caches"
 
 [dependencies]
 python-dotenv = ">=1.1.0,<2"

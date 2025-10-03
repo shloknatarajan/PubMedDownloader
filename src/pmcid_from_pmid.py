@@ -61,7 +61,7 @@ def _is_cache_entry_valid(entry: Dict, expiry_days: int = 30) -> bool:
 def get_pmcid_from_pmid(
     pmids: Union[List[str], str],
     email: str = os.getenv("NCBI_EMAIL"),
-    batch_size: int = 100,
+    batch_size: int = 200,
     delay: float = 0.4,
     use_cache: bool = True,
     cache_expiry_days: int = 30,
@@ -94,9 +94,18 @@ def get_pmcid_from_pmid(
         pmids = [pmids]
     else:
         pmids = [str(pmid) for pmid in pmids]
+    # Normalize: strip whitespace from all PMIDs for consistent keying
+    pmids = [p.strip() for p in pmids]
 
     # Load cache and filter out already cached PMIDs
     cache = _load_cache() if use_cache else {}
+    # Normalize cache keys to stripped strings for consistent lookups
+    if use_cache and cache:
+        try:
+            cache = {str(k).strip(): v for k, v in cache.items()}
+        except Exception:
+            # If normalization fails for any reason, keep original cache
+            pass
     cached_count = 0
     pmids_to_fetch = []
 
@@ -106,7 +115,11 @@ def get_pmcid_from_pmid(
             and pmid in cache
             and _is_cache_entry_valid(cache[pmid], cache_expiry_days)
         ):
-            results[pmid] = cache[pmid].get("pmcid")
+            cached_pmcid = cache[pmid].get("pmcid")
+            # Normalize empty strings or whitespace-only to None
+            if isinstance(cached_pmcid, str) and cached_pmcid.strip() == "":
+                cached_pmcid = None
+            results[pmid] = cached_pmcid
             cached_count += 1
         else:
             pmids_to_fetch.append(pmid)
@@ -117,8 +130,20 @@ def get_pmcid_from_pmid(
         )
 
     if not pmids_to_fetch:
-        logger.info("All PMIDs found in cache")
-        return results
+        # Summarize cached results; do not return early so we can persist results and emit a unified summary
+        valid_count = sum(
+            1
+            for v in results.values()
+            if v is not None and (not isinstance(v, str) or v.strip() != "")
+        )
+        total_count = len(results)
+        missing_count = total_count - valid_count
+        sample = ", ".join([str(p) for p in list({v for v in results.values() if v is not None})[:5]])
+        logger.info(
+            f"All PMIDs found in cache | Valid PMCIDs: {valid_count} / {total_count} | Missing: {missing_count}"
+        )
+        if valid_count:
+            logger.debug(f"Sample PMCIDs (cache): {sample}...")
 
     # Process remaining PMIDs
     logger.info(f"Starting conversion of {len(pmids_to_fetch)} PMIDs to PMCIDs")
@@ -147,19 +172,25 @@ def get_pmcid_from_pmid(
             # Update cache with new results
             timestamp = datetime.now().isoformat()
             for record in records:
-                pmid = record.get("pmid")
+                # Normalize to string keys (strip whitespace) to ensure consistent lookups downstream
+                pmid = (
+                    str(record.get("pmid")).strip() if record.get("pmid") is not None else None
+                )
                 pmcid = record.get("pmcid")
-                results[pmid] = pmcid if pmcid else None
-                if not pmcid:
-                    logger.warning(f"PMID {pmid} has no PMCID available.")
+                if pmid is not None:
+                    results[pmid] = pmcid if pmcid else None
 
                 # Cache the result
                 if use_cache:
-                    cache[pmid] = {"pmcid": pmcid, "timestamp": timestamp}
+                    if pmid is not None:
+                        cache[pmid] = {"pmcid": pmcid, "timestamp": timestamp}
 
             # Handle PMIDs not found in response
+            normalized_records_pmids = [
+                str(r.get("pmid")).strip() for r in records if r.get("pmid") is not None
+            ]
             for pmid in batch:
-                if pmid not in [r.get("pmid") for r in records]:
+                if pmid not in normalized_records_pmids:
                     results[pmid] = None
                     if use_cache:
                         cache[pmid] = {"pmcid": None, "timestamp": timestamp}
@@ -175,22 +206,30 @@ def get_pmcid_from_pmid(
 
         time.sleep(delay)
 
-    # Save updated cache
+    # Save updated cache (if we fetched anything new)
     if use_cache and pmids_to_fetch:
         _save_cache(cache)
 
-    # Save results to file
+    # Save results to file (always save, even if all results were served from cache)
     if save_dir is not None:
         results_path = os.path.join(
             save_dir,
             f"pmcid_from_pmid_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
         )
         logger.info(f"Saving results to {results_path}")
-        if not os.path.exists(results_path) or override:
-            with open(results_path, "w") as f:
-                json.dump(results, f, indent=2)
+        # Always write the results file for this run to avoid downstream consumers reading stale files
+        # Respect 'override' only for same-path overwrites (timestamp path makes collisions unlikely)
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=2)
 
+    # Final summary logging with counts and a small sample
+    valid_count = sum(1 for v in results.values() if v is not None)
+    total_count = len(pmids)
+    missing_count = total_count - valid_count
+    sample = ", ".join([str(p) for p in list({v for v in results.values() if v is not None})[:5]])
     logger.info(
-        f"Processed {len(pmids)} PMIDs ({cached_count} from cache, {len(pmids_to_fetch)} from API)"
+        f"Processed {total_count} PMIDs | Valid PMCIDs: {valid_count} | Missing: {missing_count} | Sources: {cached_count} from cache, {len(pmids_to_fetch)} from API"
     )
+    if valid_count:
+        logger.debug(f"Sample PMCIDs: {sample}...")
     return results
